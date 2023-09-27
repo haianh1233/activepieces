@@ -88,6 +88,7 @@
     "jsonrepair": "3.2.0",
     "jsonwebtoken": "9.0.1",
     "jszip": "3.10.1",
+    "kafkajs": "2.2.4",
     "kl-angular-mentions": "1.2.3",
     "langchain": "0.0.153",
     "lottie-web": "5.12.2",

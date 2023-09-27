@@ -1,0 +1,45 @@
+## This docker-compose.yml file is used to start the following services:
+## 1. Zookeeper cluster A
+## 2. Kafka cluster A
+##
+## This docker-compose.yml is running in host network mode for testing purposes.
+## So the services are accessible on localhost and can be testing using the unit tests or running service in IDE.
+version: '3'
+services:
+  zookeeper-cluster-a:
+    image: "confluentinc/cp-zookeeper:latest"
+    restart: always
+    container_name: zookeeper-cluster-a
+    network_mode: "host"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    healthcheck:
+      test: nc -zv localhost 2181 || exit 1
+      interval: 5s
+      retries: 25
+
+  kafka-cluster-a:
+    image: "confluentinc/cp-kafka:latest"
+    restart: always
+    container_name: kafka-cluster-a
+    hostname: kafka-cluster-a
+    network_mode: "host"
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ZOOKEEPER_CONNECT: localhost:2181
+      KAFKA_BROKER_ID: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_MS: 1000000000000
+      KAFKA_LOG_CLEANER_BACKOFF_MS: 1000
+      KAFKA_LOG4J_ROOT_LOGLEVEL: TRACE
+      KAFKA_OPTS: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+    depends_on:
+      zookeeper-cluster-a:
+        condition: service_healthy
+    healthcheck:
+      test: nc -zv localhost 9092 || exit 1
+      interval: 5s
+      retries: 25
