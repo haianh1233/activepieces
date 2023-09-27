@@ -41,11 +41,11 @@
       "@activepieces/piece-constant-contact": [
         "packages/pieces/constant-contact/src/index.ts"
       ],
-      "@activepieces/piece-contiguity": [
-        "packages/pieces/contiguity/src/index.ts"
-      ],
       "@activepieces/piece-contentful": [
         "packages/pieces/contentful/src/index.ts"
+      ],
+      "@activepieces/piece-contiguity": [
+        "packages/pieces/contiguity/src/index.ts"
       ],
       "@activepieces/piece-csv": ["packages/pieces/csv/src/index.ts"],
       "@activepieces/piece-data-mapper": [
@@ -100,6 +100,9 @@
       "@activepieces/piece-gotify": ["packages/pieces/gotify/src/index.ts"],
       "@activepieces/piece-gravityforms": [
         "packages/pieces/gravityforms/src/index.ts"
+      ],
+      "@activepieces/piece-hacker-news": [
+        "packages/pieces/hacker-news/src/index.ts"
       ],
       "@activepieces/piece-hackernews": [
         "packages/pieces/hackernews/src/index.ts"
