@@ -1,0 +1,42 @@
+{
+  "name": "pieces-kafka",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/pieces/kafka/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/packages/pieces/kafka",
+        "tsConfig": "packages/pieces/kafka/tsconfig.lib.json",
+        "packageJson": "packages/pieces/kafka/package.json",
+        "main": "packages/pieces/kafka/src/index.ts",
+        "assets": [
+          "packages/pieces/kafka/*.md"
+        ],
+        "buildableProjectDepsInPackageJsonType": "dependencies"
+      }
+    },
+    "publish": {
+      "command": "node tools/scripts/publish.mjs pieces-kafka {args.ver} {args.tag}",
+      "dependsOn": [
+        "build"
+      ]
+    },
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": [
+        "{options.outputFile}"
+      ],
+      "options": {
+        "lintFilePatterns": [
+          "packages/pieces/kafka/**/*.ts"
+        ]
+      }
+    }
+  },
+  "tags": []
+}

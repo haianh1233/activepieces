@@ -43,3 +43,73 @@ services:
       test: nc -zv localhost 9092 || exit 1
       interval: 5s
       retries: 25
+
+  schema-registry:
+    image: "confluentinc/cp-schema-registry:latest"
+    container_name: schema-registry
+    ports:
+      - "8081:8081"
+    network_mode: "host"
+    depends_on:
+      kafka-cluster-a:
+        condition: service_healthy
+      zookeeper-cluster-a:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: localhost
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'localhost:9092'
+    healthcheck:
+      test: nc -zv localhost 8081 || exit 1
+      interval: 5s
+      retries: 25
+
+  connect:
+    container_name: connect
+    restart: always
+    build:
+      context: .
+      dockerfile: ./connector/Dockerfile
+    healthcheck:
+      interval: 10s
+      retries: 20
+      test: curl --fail --silent http://localhost:8083/ --output /dev/null || exit 1
+    depends_on:
+      schema-registry:
+        condition: service_healthy
+      kafka-cluster-a:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    network_mode: "host"
+    environment:
+      CUB_CLASSPATH: '/usr/share/java/confluent-security/connect/*:/usr/share/java/kafka/*:/usr/share/java/cp-base-new/*'
+
+      CONNECT_BOOTSTRAP_SERVERS: localhost:9092
+      CONNECT_LISTENERS: http://0.0.0.0:8083
+      CONNECT_GROUP_ID: "connect-cluster"
+      CONNECT_PRODUCER_CLIENT_ID: "connect-worker-producer"
+      CONNECT_PRODUCER_ENABLE_IDEMPOTENCE: 'true'
+
+      CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: connect-statuses
+
+      CONNECT_REPLICATION_FACTOR: 1
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+
+      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+      CONNECT_LOG4J_LOGGERS: org.reflections=ERROR
+      CLASSPATH: "/usr/share/java/monitoring-interceptors/*"
+
+      # Reduce Connect memory utilization
+      KAFKA_JVM_PERFORMANCE_OPTS: -server -XX:+UseG1GC -XX:GCTimeRatio=1
+        -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20
+        -XX:MaxGCPauseMillis=10000 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent
+        -XX:MaxInlineLevel=15 -Djava.awt.headless=true

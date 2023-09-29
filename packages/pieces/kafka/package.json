@@ -1,0 +1,7 @@
+{
+  "name": "@activepieces/piece-kafka",
+  "version": "0.0.1",
+  "dependencies": {
+    "kafkajs": "^2.2.4"
+  }
+}
