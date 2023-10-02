@@ -17,7 +17,18 @@ export const kafkaConsumeMessage = createAction({
             displayName: 'Kafka Topic',
             description: 'The Kafka topic to consume the message from',
             required: true,
-        })
+        }),
+        consumer_group_id: Property.LongText({
+            displayName: 'Consumer Group Id',
+            description: 'The consumer group id',
+            required: true,
+        }),
+        throughput: Property.Number({
+            displayName: 'Throughput',
+            description: 'The number of messages to consume per trigger',
+            required: true,
+        }),
+
     },
 
     async run(context) {
@@ -25,7 +36,12 @@ export const kafkaConsumeMessage = createAction({
 
         const schemaRegistry = new SchemaRegistry({ host: 'http://127.0.0.1:8081/' });
 
-        const { bootstrap_server, topic } = context.propsValue;
+        const {
+            bootstrap_server,
+            topic ,
+            consumer_group_id,
+            throughput
+        } = context.propsValue;
 
         const clientId = "my-client";
         console.log("Connecting to kafka with client id: " + clientId);
@@ -35,9 +51,8 @@ export const kafkaConsumeMessage = createAction({
             brokers: [bootstrap_server]
         });
 
-        const consumerGroupId = "my-consumer-4402";
-        console.log("Connecting to kafka with consumer group id: " + consumerGroupId);
-        const consumer = kafka.consumer({ groupId: consumerGroupId });
+        console.log("Connecting to kafka with consumer group id: " + consumer_group_id);
+        const consumer = kafka.consumer({ groupId: consumer_group_id });
         const messages: any[] = [];
 
         try {
@@ -49,11 +64,10 @@ export const kafkaConsumeMessage = createAction({
 
 
             let count = 0;
-            const MAX_MESSAGES = 20;
 
             await consumer.run({
                 eachMessage: async ({ topic, partition, message }) => {
-                    if (count >= MAX_MESSAGES) {
+                    if (count >= throughput) {
                         return;
                     }
 
