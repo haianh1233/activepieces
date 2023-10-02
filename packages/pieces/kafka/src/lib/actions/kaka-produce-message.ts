@@ -17,7 +17,7 @@ export const kafkaProduceMessage = createAction({
             description: 'The Kafka topic to produce the message to',
             required: true,
         }),
-        message: Property.LongText({
+        message: Property.Object({
             displayName: 'Message',
             description: 'The message to produce to Kafka',
             required: true,
@@ -35,9 +35,10 @@ export const kafkaProduceMessage = createAction({
         const producer = kafka.producer();
         await producer.connect();
 
+        console.log('Send message : \n' + JSON.stringify(message) + '\n to topic: ' + topic)
         await producer.send({
             topic: topic,
-            messages: [ {value: message } ],
+            messages: [ {value: JSON.stringify(message)} ],
         });
 
         await producer.disconnect();
