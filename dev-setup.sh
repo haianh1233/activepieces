@@ -8,7 +8,7 @@ docker compose -f ./docker-compose.dev.yml build
 echo "Starting Docker Compose"
 docker compose -f ./docker-compose.dev.yml up -d --wait
 
-# Find a better way to do this later
+# Need to find a better way to do this
 echo "Granting permissions to cache folder"
 sudo chmod -R 777 ./cache
 
