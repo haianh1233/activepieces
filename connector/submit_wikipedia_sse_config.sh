@@ -18,11 +18,11 @@ DATA=$( cat << EOF
     "transforms.parseJSON.json.schema.validation.enabled": "false",
     "producer.interceptor.classes": "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor",
     "value.converter": "io.confluent.connect.avro.AvroConverter",
-    "value.converter.schema.registry.url": "http://localhost:8081",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
     "tasks.max": "1"
   }
 }
 EOF
 )
 
-docker compose exec connect curl -X POST -H "${HEADER}" --data "${DATA}" connectorSubmitter:connectorSubmitter http://localhost:8083/connectors || exit 1
+docker compose exec connect curl -X POST -H "${HEADER}" --data "${DATA}" connectorSubmitter:connectorSubmitter http://connect:8083/connectors || exit 1

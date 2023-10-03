@@ -11,7 +11,7 @@ services:
     image: activepieces/ap-base:7
     container_name: ap
     environment:
-      AP_CACHE_PATH: /usr/cache
+      AP_CACHE_PATH: /tmp/cache
       AP_DB_TYPE: POSTGRES
       AP_ENCRYPTION_KEY: 7e19fad4c13eaea8f657afb12e8f9c40
       AP_EXECUTION_MODE: UNSANDBOXED
@@ -34,6 +34,7 @@ services:
       - activepieces_dev
     volumes:
      - ./:/usr/src/app
+     - ./cache:/tmp/cache
     working_dir: /usr/src/app
     entrypoint:
       - npm
@@ -66,6 +67,118 @@ services:
       - redis_data_dev:/data
     networks:
       - activepieces_dev
+
+  zookeeper-cluster-a:
+    image: "confluentinc/cp-zookeeper:latest"
+    restart: always
+    container_name: zookeeper-cluster-a
+    networks:
+      - activepieces_dev
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    healthcheck:
+      test: nc -zv localhost 2181 || exit 1
+      interval: 5s
+      retries: 25
+
+  kafka-cluster-a:
+    image: "confluentinc/cp-kafka:latest"
+    restart: always
+    container_name: kafka-cluster-a
+    hostname: kafka-cluster-a
+    networks:
+      - activepieces_dev
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-cluster-a:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-cluster-a:2181
+      KAFKA_BROKER_ID: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_MS: 1000000000000
+      KAFKA_LOG_CLEANER_BACKOFF_MS: 1000
+      KAFKA_LOG4J_ROOT_LOGLEVEL: TRACE
+      KAFKA_OPTS: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+    depends_on:
+      zookeeper-cluster-a:
+        condition: service_healthy
+    healthcheck:
+      test: nc -zv localhost 9092 || exit 1
+      interval: 5s
+      retries: 25
+
+  schema-registry:
+    image: "confluentinc/cp-schema-registry:latest"
+    container_name: schema-registry
+    ports:
+      - "8081:8081"
+    networks:
+      - activepieces_dev
+    depends_on:
+      kafka-cluster-a:
+        condition: service_healthy
+      zookeeper-cluster-a:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka-cluster-a:9092'
+    healthcheck:
+      test: nc -zv localhost 8081 || exit 1
+      interval: 5s
+      retries: 25
+
+  connect:
+    container_name: connect
+    restart: always
+    build:
+      context: .
+      dockerfile: ./connector/Dockerfile
+    healthcheck:
+      interval: 10s
+      retries: 20
+      test: curl --fail --silent http://localhost:8083/ --output /dev/null || exit 1
+    depends_on:
+      schema-registry:
+        condition: service_healthy
+      kafka-cluster-a:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    networks:
+      - activepieces_dev
+    environment:
+      CUB_CLASSPATH: '/usr/share/java/confluent-security/connect/*:/usr/share/java/kafka/*:/usr/share/java/cp-base-new/*'
+
+      CONNECT_BOOTSTRAP_SERVERS: kafka-cluster-a:9092
+      CONNECT_LISTENERS: http://0.0.0.0:8083
+      CONNECT_GROUP_ID: "connect-cluster"
+      CONNECT_PRODUCER_CLIENT_ID: "connect-worker-producer"
+      CONNECT_PRODUCER_ENABLE_IDEMPOTENCE: 'true'
+
+      CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: connect-statuses
+
+      CONNECT_REPLICATION_FACTOR: 1
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+
+      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+      CONNECT_LOG4J_LOGGERS: org.reflections=ERROR
+      CLASSPATH: "/usr/share/java/monitoring-interceptors/*"
+
+      # Reduce Connect memory utilization
+      KAFKA_JVM_PERFORMANCE_OPTS: -server -XX:+UseG1GC -XX:GCTimeRatio=1
+        -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20
+        -XX:MaxGCPauseMillis=10000 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent
+        -XX:MaxInlineLevel=15 -Djava.awt.headless=true
 
 volumes:
   postgres_data_dev:
