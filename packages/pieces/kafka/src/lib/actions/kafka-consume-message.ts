@@ -28,20 +28,26 @@ export const kafkaConsumeMessage = createAction({
             description: 'The number of messages to consume per trigger',
             required: true,
         }),
-
+        schema_registry_url: Property.LongText({
+            displayName: 'Schema Registry',
+            description: 'The Schema Registry URL',
+            required: true,
+        }),
     },
 
     async run(context) {
         console.log("Connecting to schema registry");
-
-        const schemaRegistry = new SchemaRegistry({ host: 'http://127.0.0.1:8081/' });
-
         const {
             bootstrap_server,
             topic ,
             consumer_group_id,
-            throughput
+            throughput,
+            schema_registry_url
         } = context.propsValue;
+
+        const schemaRegistry = new SchemaRegistry({ host: schema_registry_url });
+
+
 
         const clientId = "my-client";
         console.log("Connecting to kafka with client id: " + clientId);
@@ -67,16 +73,21 @@ export const kafkaConsumeMessage = createAction({
 
             await consumer.run({
                 eachMessage: async ({ topic, partition, message }) => {
+                    // temp hack to limit the number of messages consumed
                     if (count >= throughput) {
                         return;
                     }
 
+                    console.log("Message headers")
+                    console.log(message.headers);
                     if (message.value !== null) {
                         const decodedValue = await schemaRegistry.decode(message.value);
                         console.log('Decoded value: ' + decodedValue);
                         messages.push(decodedValue);
                     }
                     count++;
+
+
                 }
             });
 
